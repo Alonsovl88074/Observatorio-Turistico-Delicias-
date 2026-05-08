@@ -28,7 +28,7 @@ Para garantizar una implementación rápida, ligera y sin necesidad de configura
 
 ---
 
-## 🛤️ Proceso de Integración paso a paso (Por Alonso Villalobos)
+## 🛤️ Proceso de Integración paso a paso
 
 A continuación, detallo el proceso lógico y técnico que llevé a cabo para construir este tablero desde cero:
 
@@ -81,5 +81,3 @@ Si en el futuro deseas conectar este tablero a una hoja de Google Sheets en tiem
 2. Publica la hoja en formato CSV (`Archivo > Compartir > Publicar en la Web`).
 3. Reemplaza la carga estática en el `useEffect` por una llamada `fetch('URL_DE_TU_CSV')` y parsea los resultados.
 
----
-*Documentación creada por Alonso Villalobos.*
