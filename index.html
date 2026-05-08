@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Observatorio Turístico Delicias</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for JSX compilation in the browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Recharts Dependencies and Recharts (Pinned to stable 2.12.7 to avoid UMD ForwardRef bug) -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/react-is@18.2.0/umd/react-is.production.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+
+    <style>
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background-color: #fdfbf7; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { 
+          BarChart, Bar, ScatterChart, Scatter, 
+          XAxis, YAxis, CartesianGrid, Tooltip: RechartsTooltip, 
+          ResponsiveContainer, AreaChart, Area, ZAxis, Cell,
+          ComposedChart, Line, Legend
+        } = window.Recharts;
+
+        // --- ICONOS SVG (Lucide) ---
+        const Icon = ({ children, className = "w-6 h-6" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                {children}
+            </svg>
+        );
+        const Lightbulb = (props) => <Icon {...props}><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.9 1.2 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></Icon>;
+        const Users = (props) => <Icon {...props}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Icon>;
+        const DollarSign = (props) => <Icon {...props}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></Icon>;
+        const BedDouble = (props) => <Icon {...props}><path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"/><path d="M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4"/><path d="M12 4v6"/><path d="M2 18h20"/></Icon>;
+        const TrendingUp = (props) => <Icon {...props}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></Icon>;
+        const MapPin = (props) => <Icon {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></Icon>;
+        const Target = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Icon>;
+        const Filter = (props) => <Icon {...props}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></Icon>;
+        const Calendar = (props) => <Icon {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></Icon>;
+        const BarChart2 = (props) => <Icon {...props}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></Icon>;
+        const MapIcon = (props) => <Icon {...props}><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></Icon>;
+        const Award = (props) => <Icon {...props}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></Icon>;
+        const Briefcase = (props) => <Icon {...props}><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></Icon>;
+        const Activity = (props) => <Icon {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></Icon>;
+        const Landmark = (props) => <Icon {...props}><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></Icon>;
+        const Flag = (props) => <Icon {...props}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></Icon>;
+
+
+        // --- COMPONENTES REUTILIZABLES ---
+        const StrategicTooltip = ({ title, usefulFor, strategy }) => {
+          const [show, setShow] = useState(false);
+
+          return (
+            <div 
+              className="absolute top-3 right-3 z-50" 
+              onMouseEnter={() => setShow(true)} 
+              onMouseLeave={() => setShow(false)}
+            >
+              <div className="bg-amber-100 p-1.5 rounded-full cursor-help shadow-sm hover:bg-amber-200 transition-colors">
+                <Lightbulb className="w-5 h-5 text-amber-600" />
+              </div>
+              
+              {show && (
+                <div className="absolute right-0 top-10 w-80 bg-white border border-amber-200 shadow-2xl rounded-xl p-5 text-sm text-slate-700 pointer-events-none transform transition-all duration-300 origin-top-right">
+                  <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-t border-l border-amber-200 transform rotate-45"></div>
+                  <h4 className="font-bold text-amber-900 mb-3 text-base border-b border-amber-100 pb-2 flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    {title}
+                  </h4>
+                  <div className="space-y-3">
+                    <p className="leading-relaxed">
+                      <strong className="text-slate-900 block mb-1">¿Para qué es útil?</strong> 
+                      {usefulFor}
+                    </p>
+                    <p className="leading-relaxed">
+                      <strong className="text-slate-900 block mb-1">Estrategia sugerida:</strong> 
+                      <span className="text-emerald-700 font-medium">{strategy}</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const KpiCard = ({ title, value, subtitle, icon: IconComp, color, tooltipData }) => (
+          <div className="relative bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow h-full">
+            {tooltipData && <StrategicTooltip {...tooltipData} />}
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${color}`}>
+              <IconComp className="w-6 h-6" />
+            </div>
+            <h3 className="text-slate-500 text-sm font-semibold mb-1">{title}</h3>
+            <div className="flex flex-col gap-1">
+              <span className="text-2xl lg:text-3xl font-bold text-slate-800">{value}</span>
+              {subtitle && <span className="text-xs text-slate-500 font-medium leading-tight mt-1">{subtitle}</span>}
+            </div>
+          </div>
+        );
+
+        // --- VISTA 1: MONITOREO DE EVENTOS ---
+        const EventMonitoringView = ({ filteredData, selectedYear, EVENT_COLORS, metricConfig, primaryMetric, setPrimaryMetric }) => {
+          const totalVisitantes = filteredData.reduce((acc, curr) => acc + curr.visitantes, 0);
+          const promOcupacion = Math.round(filteredData.reduce((acc, curr) => acc + curr.ocupacion, 0) / (filteredData.length || 1));
+          const totalIngresos = filteredData.reduce((acc, curr) => acc + curr.ingreso, 0);
+          const promSatisfaccion = (filteredData.reduce((acc, curr) => acc + curr.satisfaccion, 0) / (filteredData.length || 1)).toFixed(1);
+
+          return (
+            <div className="fade-in">
+              {/* Fila 1: KPIs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <KpiCard 
+                  title={`Total Visitantes (${selectedYear})`}
+                  value={totalVisitantes.toLocaleString()}
+                  icon={Users}
+                  color="bg-amber-50 text-amber-600"
+                  tooltipData={{
+                    title: "Volumen de Visitantes",
+                    usefulFor: "Mide el flujo de turistas impulsado por los eventos históricos y proyectados (2022-2026).",
+                    strategy: "Cruzar la asistencia de la 'Expo Feria' y el 'Festival de la Fundación' para dimensionar el mercado."
+                  }}
+                />
+                <KpiCard 
+                  title="Ocupación Promedio"
+                  value={`${promOcupacion}%`}
+                  icon={BedDouble}
+                  color="bg-purple-50 text-purple-600"
+                  tooltipData={{
+                    title: "Ocupación de Infraestructura",
+                    usefulFor: "Muestra los picos donde la capacidad hotelera se satura.",
+                    strategy: "Si se aproxima al 100%, detonar la construcción o adaptación de hospedaje local."
+                  }}
+                />
+                <KpiCard 
+                  title={`Derrama Económica (${selectedYear})`}
+                  value={`$${(totalIngresos / 1000000).toFixed(2)}M`}
+                  icon={DollarSign}
+                  color="bg-emerald-50 text-emerald-600"
+                  tooltipData={{
+                    title: "Impacto Económico Directo",
+                    usefulFor: "Cuantifica el retorno financiero por los eventos organizados.",
+                    strategy: "Impulsar ventas cruzadas de productos regionales (nuez, vino, queso) durante los festivales."
+                  }}
+                />
+                <KpiCard 
+                  title="Índice de Satisfacción"
+                  value={`${promSatisfaccion}/5`}
+                  icon={TrendingUp}
+                  color="bg-blue-50 text-blue-600"
+                  tooltipData={{
+                    title: "Calidad de la Experiencia",
+                    usefulFor: "Un índice alto asegura que los turistas regresen los años posteriores.",
+                    strategy: "Capacitar mediante los Registros Nacionales de Turismo (RNT) para mantener este estándar elevado."
+                  }}
+                />
+              </div>
+
+              {/* Fila 2: Gráficas Principales */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative lg:col-span-7">
+                  <StrategicTooltip 
+                    title="Evolución Histórica y Proyectada"
+                    usefulFor="Permite observar las tendencias estacionales a través del tiempo."
+                    strategy="Identifica patrones de meses 'valle' consistentes para inventar nuevos festivales."
+                  />
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                      <BarChart2 className="w-5 h-5 text-amber-500" /> Evolución Temporal
+                    </h3>
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      {Object.keys(metricConfig).map(key => (
+                        <button
+                          key={key}
+                          onClick={() => setPrimaryMetric(key)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                            primaryMetric === key ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          {metricConfig[key].name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={filteredData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorMetric" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={metricConfig[primaryMetric].color} stopOpacity={0.4}/>
+                            <stop offset="95%" stopColor={metricConfig[primaryMetric].color} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="mes_corto" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} tickFormatter={metricConfig[primaryMetric].format} />
+                        <RechartsTooltip 
+                          formatter={(value) => [metricConfig[primaryMetric].format(value), metricConfig[primaryMetric].name]}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                        />
+                        <Area type="monotone" dataKey={primaryMetric} stroke={metricConfig[primaryMetric].color} strokeWidth={3} fillOpacity={1} fill="url(#colorMetric)" activeDot={{ r: 6, strokeWidth: 0, fill: metricConfig[primaryMetric].color }}/>
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative lg:col-span-5">
+                  <StrategicTooltip 
+                    title="Impacto por Tipología de Evento"
+                    usefulFor="Demuestra la capacidad de arrastre que tiene cada evento sobre el número de visitantes."
+                    strategy="Priorizar los presupuestos municipales hacia los eventos que generen las barras más largas."
+                  />
+                  <h3 className="text-lg font-bold text-slate-800 mb-6">Afluencia por Evento (Top)</h3>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart 
+                        data={filteredData.filter(d => d.evento_tipo !== 'Ninguno').sort((a,b) => b.visitantes - a.visitantes).slice(0, 8)} 
+                        layout="vertical" 
+                        margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                        <XAxis type="number" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                        <YAxis type="category" dataKey="evento_nombre" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 500}} width={110} />
+                        <RechartsTooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value, name, props) => [`${value.toLocaleString()} pax`, `Año: ${props.payload.year}`]} />
+                        <Bar dataKey="visitantes" radius={[0, 4, 4, 0]}>
+                          {filteredData.filter(d => d.evento_tipo !== 'Ninguno').sort((a,b) => b.visitantes - a.visitantes).slice(0, 8).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={EVENT_COLORS[entry.evento_tipo]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Fila 3: Correlaciones */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Perfil del Turista: Retención vs Monetización</h3>
+                    <p className="text-sm text-slate-500">Días promedio de estancia vs. Gasto diario promedio clasificado por temática.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-3 md:mt-0">
+                    {Object.entries(EVENT_COLORS).filter(([k]) => k !== 'Ninguno').map(([tipo, color]) => (
+                      <div key={tipo} className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
+                        {tipo}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-96 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                      <XAxis type="number" dataKey="dias_estancia" name="Estancia Promedio" unit=" días" tick={{fill: '#64748b'}} domain={[1, 4]} />
+                      <YAxis type="number" dataKey="gasto_promedio" name="Gasto Promedio" unit=" MXN" tick={{fill: '#64748b'}} domain={[500, 3000]} />
+                      <ZAxis type="number" dataKey="visitantes" range={[100, 1000]} name="Afluencia" />
+                      <RechartsTooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', padding: '12px' }} content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white p-3 rounded-lg shadow-xl border border-slate-100">
+                                <p className="font-bold text-slate-800 border-b pb-1 mb-2">{data.mes_corto} {data.year}</p>
+                                {data.evento_nombre !== 'Ninguno' && <p className="text-sm font-semibold text-amber-600 mb-1">{data.evento_nombre}</p>}
+                                <p className="text-sm text-slate-600">Estancia: <span className="font-semibold text-slate-800">{data.dias_estancia} días</span></p>
+                                <p className="text-sm text-slate-600">Gasto Prom.: <span className="font-semibold text-emerald-600">${data.gasto_promedio} MXN</span></p>
+                                <p className="text-sm text-slate-600">Categoría: {data.evento_tipo}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}/>
+                      {Object.keys(EVENT_COLORS).map(tipo => (
+                        <Scatter key={tipo} name={tipo} data={filteredData.filter(d => d.evento_tipo === tipo)} fill={EVENT_COLORS[tipo]} opacity={0.8} />
+                      ))}
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- VISTA 2: IMPACTO REGIONAL Y MACROECONÓMICO ---
+        const RegionalImpactView = ({ macroData }) => {
+          return (
+            <div className="fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <KpiCard 
+                  title="Derrama Base (Histórico 2022)"
+                  value="$444.9M"
+                  subtitle="MXN generados, aportando 2.9% Estatal"
+                  icon={Landmark}
+                  color="bg-emerald-50 text-emerald-600"
+                  tooltipData={{
+                    title: "Métrica Base de Comparación",
+                    usefulFor: "Punto de referencia para evaluar crecimiento interanual.",
+                    strategy: "Demostrar incremento para aprobar mayores partidas."
+                  }}
+                />
+                <KpiCard 
+                  title="Derrama Perlas del Conchos"
+                  value="≈$600M"
+                  subtitle="Proyección 2025 (Solo enero: 50M)"
+                  icon={TrendingUp}
+                  color="bg-blue-50 text-blue-600"
+                  tooltipData={{
+                    title: "Proyección Regional 2025",
+                    usefulFor: "Indica el peso de Delicias como motor principal en la región.",
+                    strategy: "Unificar marcas bajo 'Perlas del Conchos'."
+                  }}
+                />
+                <KpiCard 
+                  title="Ocupación Hotelera"
+                  value="1er Lugar"
+                  subtitle="Estatal en 2024 (Récord histórico)"
+                  icon={Award}
+                  color="bg-amber-50 text-amber-600"
+                  tooltipData={{
+                    title: "Dominancia Estatal",
+                    usefulFor: "Confirma a Delicias como principal receptor porcentual.",
+                    strategy: "Atraer cadenas hoteleras con este dato."
+                  }}
+                />
+                <KpiCard 
+                  title="Afluencia Turística Noche"
+                  value="213.3k"
+                  subtitle="Registrados solo en el 2do Trimestre 2024"
+                  icon={BedDouble}
+                  color="bg-purple-50 text-purple-600"
+                  tooltipData={{
+                    title: "Volumen de Pernoctas",
+                    usefulFor: "Demuestra densidad turística en pocos meses.",
+                    strategy: "Estimular 'Late Check-out' y cenas."
+                  }}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-slate-800 text-white p-6 rounded-2xl relative overflow-hidden shadow-lg border border-slate-700">
+                  <StrategicTooltip 
+                    title="Política Pública"
+                    usefulFor="El marco legal es el que permite que los fondos fluyan."
+                    strategy="Lobby con diputados locales."
+                  />
+                  <div className="relative z-10">
+                    <h3 className="text-slate-300 font-semibold mb-2 flex items-center gap-2">
+                      <Landmark className="w-5 h-5 text-amber-400" /> Reforma a la Ley de Turismo 2026
+                    </h3>
+                    <p className="text-xl font-bold leading-tight mb-3">Reversión del Impuesto de Hospedaje (ISN) a la región.</p>
+                    <p className="text-slate-400 text-sm">
+                      Iniciativa para reinvertir en infraestructura local y <strong>Rutas del Vino, Queso y Nuez</strong>.
+                    </p>
+                  </div>
+                  <div className="absolute right-0 top-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
+                    <Target className="w-48 h-48" />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl relative shadow-sm border border-slate-200">
+                  <StrategicTooltip 
+                    title="Posicionamiento 2019"
+                    usefulFor="Sustenta que Delicias es destino, no solo paso."
+                    strategy="Rescatar 'Módulo de Información Turística'."
+                  />
+                  <h3 className="text-slate-500 font-semibold mb-2 flex items-center gap-2">
+                    <Flag className="w-5 h-5 text-emerald-600" /> Visión Regional (Plan Vigente)
+                  </h3>
+                  <p className="text-lg text-slate-800 font-bold leading-tight mb-3">"Región Delicias, Zona Turística por Excelencia"</p>
+                  <p className="text-slate-600 text-sm">Posicionamiento hacia la frontera. Énfasis en <strong>turismo de negocios y placer</strong>.</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">Evolución de Turistas-Noche</h3>
+                  <p className="text-sm text-slate-500 mb-6">Comparativa Anual 2022 vs. 2do Trimestre 2024</p>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={macroData.turistasNoche} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="periodo" tick={{fill: '#64748b', fontSize: 12}} axisLine={false} tickLine={false} />
+                        <YAxis tick={{fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
+                        <RechartsTooltip 
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} 
+                          formatter={(value) => [value.toLocaleString(), "Turistas Noche"]}
+                        />
+                        <Legend />
+                        <Bar dataKey="valor" name="Huéspedes" radius={[6, 6, 0, 0]} maxBarSize={80}>
+                          {macroData.turistasNoche.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={index === 0 ? '#94a3b8' : '#3b82f6'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative">
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">Derrama Económica y Peso Estatal</h3>
+                  <p className="text-sm text-slate-500 mb-6">Monto en MXN y Porcentaje de Participación (%)</p>
+                  <div className="h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={macroData.derramaGrowth} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="periodo" tick={{fill: '#64748b', fontSize: 11}} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="left" tick={{fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} />
+                        <YAxis yAxisId="right" orientation="right" tick={{fill: '#64748b'}} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <Legend />
+                        <Bar yAxisId="left" dataKey="derrama" name="Derrama (Millones MXN)" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                        <Line yAxisId="right" type="monotone" dataKey="participacion" name="% Estatal" stroke="#f59e0b" strokeWidth={3} dot={{r: 6}} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative mb-8">
+                <h3 className="text-lg font-bold text-slate-800 mb-6">Polos Estratégicos de Desarrollo Turístico</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="flex flex-col gap-3 p-5 rounded-xl bg-blue-50 border border-blue-100 h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0"><Activity className="w-6 h-6" /></div>
+                      <h4 className="font-bold text-blue-900">Infraestructura Deportiva ($26M)</h4>
+                    </div>
+                    <p className="text-sm text-blue-800">Inyección de capital en Ciudad Infantil, gimnasios y campos. Apalanca "Torneos Estudiantiles".</p>
+                  </div>
+                  <div className="flex flex-col gap-3 p-5 rounded-xl bg-amber-50 border border-amber-100 h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-100 text-amber-600 rounded-lg shrink-0"><MapIcon className="w-6 h-6" /></div>
+                      <h4 className="font-bold text-amber-900">Rutas Agro-Ecológicas</h4>
+                    </div>
+                    <p className="text-sm text-amber-800">Destino premium: Rutas del Vino, Queso y Nuez. Desestacionaliza el turismo.</p>
+                  </div>
+                  <div className="flex flex-col gap-3 p-5 rounded-xl bg-slate-50 border border-slate-200 h-full">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-slate-200 text-slate-600 rounded-lg shrink-0"><Briefcase className="w-6 h-6" /></div>
+                      <h4 className="font-bold text-slate-900">Profesionalización (RNT)</h4>
+                    </div>
+                    <p className="text-sm text-slate-700">Entrega formal de +20 Registros Nacionales de Turismo (hoteles, agencias, restaurantes).</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- CONTENEDOR PRINCIPAL ---
+        function DeliciasTourismDashboard() {
+          const [data, setData] = useState([]);
+          const [loading, setLoading] = useState(true);
+          const [activeTab, setActiveTab] = useState('eventos');
+          const [availableYears, setAvailableYears] = useState([]);
+          const [selectedYear, setSelectedYear] = useState('Todos');
+          const [primaryMetric, setPrimaryMetric] = useState('visitantes');
+
+          useEffect(() => {
+            const fullData = getDeliciasEventData();
+            setData(fullData);
+            const years = [...new Set(fullData.map(item => item.year))].sort();
+            setAvailableYears([...years.map(String), 'Todos']);
+            setLoading(false);
+          }, []);
+
+          const filteredData = useMemo(() => {
+            if (selectedYear === 'Todos') return data;
+            return data.filter(item => item.year === parseInt(selectedYear));
+          }, [data, selectedYear]);
+
+          const macroData = {
+            derramaGrowth: [
+              { periodo: 'Año Base 2022', derrama: 444.96, participacion: 2.9 },
+              { periodo: '2do Trim 2024', derrama: 311.12, participacion: 4.01 }, 
+              { periodo: 'Proy. 2025 (P. Conchos)', derrama: 600.00, participacion: 5.2 }
+            ],
+            turistasNoche: [
+              { periodo: '2022 (Año Completo)', valor: 396488 },
+              { periodo: '2024 (Solo 2do Trim.)', valor: 213303 }
+            ]
+          };
+
+          const metricConfig = {
+            visitantes: { name: 'Visitantes', color: '#d97706', format: v => v.toLocaleString() },
+            ingreso: { name: 'Derrama (MXN)', color: '#059669', format: v => `$${(v/1000).toFixed(0)}k` },
+            ocupacion: { name: 'Ocupación (%)', color: '#8b5cf6', format: v => `${v}%` }
+          };
+
+          const EVENT_COLORS = {
+            'Tradición y Cultura': '#e11d48',
+            'Deporte y Aventura': '#2563eb',
+            'Agroindustria': '#16a34a',
+            'Gastronomía': '#d97706',
+            'Ninguno': '#cbd5e1'
+          };
+
+          if (loading) {
+            return (
+              <div className="min-h-screen bg-[#fdfbf7] flex items-center justify-center flex-col gap-4">
+                <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
+                <p className="text-amber-800 font-medium">Sincronizando años y métricas...</p>
+              </div>
+            );
+          }
+
+          return (
+            <div className="min-h-screen bg-[#fdfbf7] font-sans text-slate-800 p-6 md:p-10">
+              <header className="mb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-amber-200/50 pb-6">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <MapPin className="w-8 h-8 text-amber-600" />
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Observatorio Turístico Delicias</h1>
+                  </div>
+                  <p className="text-slate-500 text-lg">Análisis de Eventos y Macroeconomía Regional (2022-2026)</p>
+                </div>
+              </header>
+
+              <div className="flex flex-wrap gap-2 mb-8 bg-slate-100 p-1.5 rounded-xl w-fit">
+                <button
+                  onClick={() => setActiveTab('eventos')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${
+                    activeTab === 'eventos' ? 'bg-white text-amber-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Calendar className="w-4 h-4" /> Monitoreo de Eventos
+                </button>
+                <button
+                  onClick={() => setActiveTab('regional')}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${
+                    activeTab === 'regional' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <Target className="w-4 h-4" /> Impacto Regional y Macroeconómico
+                </button>
+              </div>
+
+              {activeTab === 'eventos' ? (
+                <>
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-8 flex flex-col md:flex-row gap-6 items-center justify-between">
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                      <Filter className="w-5 h-5 text-slate-400" />
+                      <span className="font-semibold text-slate-700">Filtrar Año:</span>
+                      <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                        {availableYears.map(year => (
+                          <button
+                            key={year}
+                            onClick={() => setSelectedYear(year)}
+                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                              selectedYear === year ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            {year}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-sm text-slate-500 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" /> Mostrando {filteredData.length} registros (Meses)
+                    </div>
+                  </div>
+
+                  <EventMonitoringView 
+                    filteredData={filteredData} 
+                    selectedYear={selectedYear} 
+                    EVENT_COLORS={EVENT_COLORS} 
+                    metricConfig={metricConfig} 
+                    primaryMetric={primaryMetric} 
+                    setPrimaryMetric={setPrimaryMetric} 
+                  />
+                </>
+              ) : (
+                <RegionalImpactView macroData={macroData} />
+              )}
+
+              <footer className="text-center text-slate-500 text-sm mt-12 pb-4">
+                Observatorio Turístico • Región Delicias / Perlas del Conchos, Chihuahua
+              </footer>
+            </div>
+          );
+        }
+
+        // Datos integrados (CSV local simulado)
+        function getDeliciasEventData() {
+          return [
+            { year: 2022, mes_corto: 'Ene 22', visitantes: 2800, ocupacion: 38, ingreso: 500000, gasto_promedio: 750, dias_estancia: 1.1, satisfaccion: 4.4, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Feb 22', visitantes: 3000, ocupacion: 40, ingreso: 550000, gasto_promedio: 780, dias_estancia: 1.2, satisfaccion: 4.5, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Mar 22', visitantes: 3500, ocupacion: 45, ingreso: 650000, gasto_promedio: 820, dias_estancia: 1.3, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Abr 22', visitantes: 6500, ocupacion: 75, ingreso: 1300000, gasto_promedio: 950, dias_estancia: 1.8, satisfaccion: 4.7, evento_nombre: 'Aniv. Fundación (89)', evento_tipo: 'Tradición y Cultura' },
+            { year: 2022, mes_corto: 'May 22', visitantes: 3800, ocupacion: 48, ingreso: 720000, gasto_promedio: 800, dias_estancia: 1.3, satisfaccion: 4.5, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Jun 22', visitantes: 4200, ocupacion: 52, ingreso: 850000, gasto_promedio: 850, dias_estancia: 1.5, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Jul 22', visitantes: 8500, ocupacion: 88, ingreso: 2100000, gasto_promedio: 1100, dias_estancia: 3.0, satisfaccion: 4.8, evento_nombre: 'Expo Feria Delicias', evento_tipo: 'Tradición y Cultura' },
+            { year: 2022, mes_corto: 'Ago 22', visitantes: 4800, ocupacion: 58, ingreso: 920000, gasto_promedio: 880, dias_estancia: 1.6, satisfaccion: 4.5, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Sep 22', visitantes: 4000, ocupacion: 50, ingreso: 780000, gasto_promedio: 820, dias_estancia: 1.4, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2022, mes_corto: 'Oct 22', visitantes: 5500, ocupacion: 68, ingreso: 1400000, gasto_promedio: 1400, dias_estancia: 2.2, satisfaccion: 4.7, evento_nombre: 'Inicio Fest. Muerte', evento_tipo: 'Tradición y Cultura' },
+            { year: 2022, mes_corto: 'Nov 22', visitantes: 5200, ocupacion: 65, ingreso: 1300000, gasto_promedio: 1450, dias_estancia: 2.0, satisfaccion: 4.6, evento_nombre: 'Cierre Fest. Muerte', evento_tipo: 'Tradición y Cultura' },
+            { year: 2022, mes_corto: 'Dic 22', visitantes: 6000, ocupacion: 72, ingreso: 1500000, gasto_promedio: 1200, dias_estancia: 2.5, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Ene 23', visitantes: 3100, ocupacion: 42, ingreso: 620000, gasto_promedio: 800, dias_estancia: 1.2, satisfaccion: 4.5, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Feb 23', visitantes: 3500, ocupacion: 46, ingreso: 710000, gasto_promedio: 850, dias_estancia: 1.4, satisfaccion: 4.6, evento_nombre: 'Torneos Estudiantiles', evento_tipo: 'Deporte y Aventura' },
+            { year: 2023, mes_corto: 'Mar 23', visitantes: 4200, ocupacion: 52, ingreso: 850000, gasto_promedio: 950, dias_estancia: 1.8, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Abr 23', visitantes: 7500, ocupacion: 82, ingreso: 1600000, gasto_promedio: 1100, dias_estancia: 2.1, satisfaccion: 4.8, evento_nombre: 'Aniv. Fundación (90)', evento_tipo: 'Tradición y Cultura' },
+            { year: 2023, mes_corto: 'May 23', visitantes: 4600, ocupacion: 56, ingreso: 920000, gasto_promedio: 900, dias_estancia: 1.5, satisfaccion: 4.5, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Jun 23', visitantes: 5000, ocupacion: 60, ingreso: 1020000, gasto_promedio: 980, dias_estancia: 1.8, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Jul 23', visitantes: 9800, ocupacion: 95, ingreso: 2800000, gasto_promedio: 1350, dias_estancia: 3.5, satisfaccion: 4.9, evento_nombre: 'Expo Feria Delicias', evento_tipo: 'Tradición y Cultura' },
+            { year: 2023, mes_corto: 'Ago 23', visitantes: 5800, ocupacion: 68, ingreso: 1150000, gasto_promedio: 1050, dias_estancia: 2.2, satisfaccion: 4.5, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Sep 23', visitantes: 4800, ocupacion: 58, ingreso: 980000, gasto_promedio: 1000, dias_estancia: 1.6, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2023, mes_corto: 'Oct 23', visitantes: 6500, ocupacion: 75, ingreso: 1800000, gasto_promedio: 1750, dias_estancia: 2.8, satisfaccion: 4.8, evento_nombre: 'Fest. de la Muerte', evento_tipo: 'Tradición y Cultura' },
+            { year: 2023, mes_corto: 'Nov 23', visitantes: 6200, ocupacion: 72, ingreso: 1650000, gasto_promedio: 1850, dias_estancia: 2.5, satisfaccion: 4.7, evento_nombre: 'Cierre Fest. Muerte', evento_tipo: 'Tradición y Cultura' },
+            { year: 2023, mes_corto: 'Dic 23', visitantes: 7000, ocupacion: 80, ingreso: 1900000, gasto_promedio: 1550, dias_estancia: 3.0, satisfaccion: 4.8, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Ene 24', visitantes: 3300, ocupacion: 44, ingreso: 680000, gasto_promedio: 880, dias_estancia: 1.3, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Feb 24', visitantes: 3800, ocupacion: 49, ingreso: 780000, gasto_promedio: 920, dias_estancia: 1.5, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Mar 24', visitantes: 4500, ocupacion: 55, ingreso: 950000, gasto_promedio: 1050, dias_estancia: 1.9, satisfaccion: 4.8, evento_nombre: 'Torneos Softbol', evento_tipo: 'Deporte y Aventura' },
+            { year: 2024, mes_corto: 'Abr 24', visitantes: 8800, ocupacion: 92, ingreso: 2100000, gasto_promedio: 1250, dias_estancia: 2.2, satisfaccion: 4.9, evento_nombre: 'Pelicanazo & Aniv. (91)', evento_tipo: 'Deporte y Aventura' },
+            { year: 2024, mes_corto: 'May 24', visitantes: 5100, ocupacion: 62, ingreso: 1050000, gasto_promedio: 1000, dias_estancia: 1.6, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Jun 24', visitantes: 5500, ocupacion: 66, ingreso: 1180000, gasto_promedio: 1100, dias_estancia: 1.9, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Jul 24', visitantes: 10500, ocupacion: 98, ingreso: 3200000, gasto_promedio: 1450, dias_estancia: 3.8, satisfaccion: 4.9, evento_nombre: 'Expo Feria Delicias', evento_tipo: 'Tradición y Cultura' },
+            { year: 2024, mes_corto: 'Ago 24', visitantes: 6200, ocupacion: 72, ingreso: 1350000, gasto_promedio: 1150, dias_estancia: 2.3, satisfaccion: 4.6, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Sep 24', visitantes: 5200, ocupacion: 64, ingreso: 1100000, gasto_promedio: 1100, dias_estancia: 1.7, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2024, mes_corto: 'Oct 24', visitantes: 7800, ocupacion: 88, ingreso: 2500000, gasto_promedio: 2100, dias_estancia: 3.2, satisfaccion: 4.9, evento_nombre: 'Festival Cosecha / Muerte', evento_tipo: 'Agroindustria' },
+            { year: 2024, mes_corto: 'Nov 24', visitantes: 7200, ocupacion: 82, ingreso: 2300000, gasto_promedio: 2300, dias_estancia: 2.8, satisfaccion: 4.8, evento_nombre: 'Vinos y Tradición', evento_tipo: 'Gastronomía' },
+            { year: 2024, mes_corto: 'Dic 24', visitantes: 7500, ocupacion: 85, ingreso: 2150000, gasto_promedio: 1650, dias_estancia: 3.1, satisfaccion: 4.8, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Ene 25', visitantes: 3600, ocupacion: 48, ingreso: 780000, gasto_promedio: 920, dias_estancia: 1.4, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Feb 25', visitantes: 4000, ocupacion: 52, ingreso: 850000, gasto_promedio: 950, dias_estancia: 1.6, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Mar 25', visitantes: 4800, ocupacion: 60, ingreso: 1050000, gasto_promedio: 1100, dias_estancia: 2.0, satisfaccion: 4.8, evento_nombre: 'Eventos Deportivos', evento_tipo: 'Deporte y Aventura' },
+            { year: 2025, mes_corto: 'Abr 25', visitantes: 9200, ocupacion: 95, ingreso: 2500000, gasto_promedio: 1350, dias_estancia: 2.4, satisfaccion: 4.9, evento_nombre: 'Pelicanazo / Aniversario', evento_tipo: 'Deporte y Aventura' },
+            { year: 2025, mes_corto: 'May 25', visitantes: 5400, ocupacion: 65, ingreso: 1150000, gasto_promedio: 1050, dias_estancia: 1.7, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Jun 25', visitantes: 5800, ocupacion: 68, ingreso: 1300000, gasto_promedio: 1150, dias_estancia: 2.0, satisfaccion: 4.8, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Jul 25', visitantes: 11000, ocupacion: 100, ingreso: 3800000, gasto_promedio: 1600, dias_estancia: 4.0, satisfaccion: 4.9, evento_nombre: 'Expo Feria (Proyectada)', evento_tipo: 'Tradición y Cultura' },
+            { year: 2025, mes_corto: 'Ago 25', visitantes: 6500, ocupacion: 75, ingreso: 1500000, gasto_promedio: 1200, dias_estancia: 2.4, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Sep 25', visitantes: 5500, ocupacion: 68, ingreso: 1200000, gasto_promedio: 1150, dias_estancia: 1.8, satisfaccion: 4.8, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2025, mes_corto: 'Oct 25', visitantes: 8500, ocupacion: 92, ingreso: 3200000, gasto_promedio: 2400, dias_estancia: 3.5, satisfaccion: 4.9, evento_nombre: 'Fest. Cosecha / Muerte 2025', evento_tipo: 'Agroindustria' },
+            { year: 2025, mes_corto: 'Nov 25', visitantes: 7800, ocupacion: 86, ingreso: 2800000, gasto_promedio: 2600, dias_estancia: 3.0, satisfaccion: 4.9, evento_nombre: 'Vinos Cerveza y Sotol', evento_tipo: 'Gastronomía' },
+            { year: 2025, mes_corto: 'Dic 25', visitantes: 8000, ocupacion: 88, ingreso: 2500000, gasto_promedio: 1800, dias_estancia: 3.2, satisfaccion: 4.9, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2026, mes_corto: 'Ene 26', visitantes: 3800, ocupacion: 50, ingreso: 850000, gasto_promedio: 950, dias_estancia: 1.5, satisfaccion: 4.7, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2026, mes_corto: 'Feb 26', visitantes: 4200, ocupacion: 55, ingreso: 920000, gasto_promedio: 980, dias_estancia: 1.7, satisfaccion: 4.8, evento_nombre: 'Ninguno', evento_tipo: 'Ninguno' },
+            { year: 2026, mes_corto: 'Mar 26', visitantes: 5500, ocupacion: 65, ingreso: 1300000, gasto_promedio: 1200, dias_estancia: 2.2, satisfaccion: 4.9, evento_nombre: 'Arranque Aniversario (93)', evento_tipo: 'Tradición y Cultura' },
+            { year: 2026, mes_corto: 'Abr 26', visitantes: 10000, ocupacion: 98, ingreso: 3100000, gasto_promedio: 1500, dias_estancia: 2.8, satisfaccion: 4.9, evento_nombre: 'Gran Fest. Fundación (93)', evento_tipo: 'Tradición y Cultura' },
+            { year: 2026, mes_corto: 'May 26', visitantes: 6000, ocupacion: 70, ingreso: 1400000, gasto_promedio: 1100, dias_estancia: 1.9, satisfaccion: 4.8, evento_nombre: 'Cierre de Fundación', evento_tipo: 'Tradición y Cultura' }
+          ];
+        }
+
+        // Renderizado
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DeliciasTourismDashboard />);
+    </script>
+</body>
+</html>
